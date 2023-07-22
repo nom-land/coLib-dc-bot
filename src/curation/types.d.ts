@@ -17,7 +17,7 @@ export interface RawCuration {
 export interface Curation {
     curator: Account;
     community: Account;
-    list: string;
+    lists: string[];
     reason: CurationReason;
     raw?: RawCuration;
 }

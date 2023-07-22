@@ -3,6 +3,7 @@ import {
     CharacterMetadata,
     CharacterOperatorPermission,
     Contract,
+    createIndexer,
 } from "crossbell";
 import { Wallet } from "ethers";
 import { Account } from "./types";
@@ -74,13 +75,14 @@ export const createNewRecordIfNotExist = async (
     c: Contract,
     admin: `0x${string}`,
     handle: string,
-    rec: Record
+    rec: Record,
+    curator: bigint
 ) => {
     const { data } = await c.character.getByHandle({ handle });
     if (data.characterId) {
         return data.characterId;
     } else {
-        return createNewRecord(c, admin, handle, rec);
+        return createNewRecord(c, admin, handle, rec, curator);
     }
 };
 
@@ -88,10 +90,12 @@ export const createNewRecord = async (
     c: Contract,
     admin: `0x${string}`,
     handle: string,
-    rec: Record
+    rec: Record,
+    curator: bigint
 ) => {
     const profile = {
         ...rec,
+        original_curator_id: curator.toString(),
         variant: "record",
     } as CharacterMetadata;
 
@@ -117,18 +121,21 @@ export const getPermission = async (
 
 // if the character bound to account is not existed, create it;
 // if it has been existed, return the character id
-export const createCharacterIfNotExist = async (
-    c: Contract,
-    admin: `0x${string}`,
-    acc: Account
-) => {
-    const handle = formatHandle(acc);
+export const getCharacterByAcc = async (options: {
+    c: Contract;
+    acc: Account;
+    admin?: `0x${string}`;
+    createIfNotExist?: true; // if this is true, admin has to be provided
+}) => {
+    const handle = formatHandle(options.acc);
     let existed = true;
+    const { c, acc, admin, createIfNotExist } = options;
     const { data } = await c.character.getByHandle({ handle });
     let characterId = data.characterId;
     if (!characterId) {
         existed = false;
-        characterId = await createNewCharacter(c, admin, handle, acc);
+        if (createIfNotExist && admin)
+            characterId = await createNewCharacter(c, admin, handle, acc);
     }
 
     return { characterId, existed };
@@ -143,11 +150,12 @@ export const getCharacter = async (
     acc: Account,
     requiredPermissions: CharacterPermissionKey[]
 ) => {
-    const { characterId, existed } = await createCharacterIfNotExist(
+    const { characterId, existed } = await getCharacterByAcc({
         c,
         admin,
-        acc
-    );
+        acc,
+        createIfNotExist: true,
+    });
 
     if (existed) {
         let characterOwner = admin;
@@ -176,92 +184,28 @@ export const getCharacter = async (
     return characterId;
 };
 
-export const setup = async (priKey: `0x${string}`) => {
+export const setup = async (priKey?: `0x${string}`) => {
+    // if prikey is not provided, use the `0x0`
+    if (!priKey) {
+        const contract = new Contract(undefined);
+        return { admin: "0x0" as `0x${string}`, contract };
+    }
     const admin = (await new Wallet(priKey).getAddress()) as `0x${string}`;
     const contract = new Contract(priKey);
     return { admin, contract };
 };
 
-// export async function useCrossbell(
-//     username: string,
-//     authorId: string,
-//     authorAvatar: string,
-//     banner: string,
-//     guildName: string,
-//     title: string,
-//     publishedTime: string,
-//     tags: string[],
-//     content: string,
-//     attachments: NoteMetadataAttachmentBase<"address">[],
-//     curatorId: string,
-//     curatorUsername: string,
-//     curatorAvatar: string,
-//     curatorBanner: string,
-//     attributes?: Attrs
-// ) {
-//     // If the author has not been created a character, create one first
-//     // Otherwise, post note directly
-//     const priKey = process.env.adminPrivateKey;
-//     if (!priKey) throw Error("Admin has not been set up.");
-//     const { admin, contract } = await setup(priKey);
-//     const handle = formatHandle(authorId, guildName);
+// Get all links of an acc
+export async function getLinks(acc: Account) {
+    const { contract } = await setup();
+    const { existed, characterId } = await getCharacterByAcc({
+        acc,
+        c: contract,
+    });
 
-//     const curatorHandle = formatHandle(curatorId, guildName);
+    if (!existed) return { count: 0, list: [] };
 
-//     //TODO: is valid handle?
-//     if (handle.length < 3) {
-//         throw new Error("handle length is wrong");
-//     }
-
-//     const characterId = await createCharacterIfNotExist(
-//         contract,
-//         admin,
-//         handle,
-//         username,
-//         authorAvatar,
-//         authorId,
-//         banner
-//     );
-
-//     let curatorCharacterId = characterId;
-//     if (curatorHandle !== handle) {
-//         curatorCharacterId = await createCharacterIfNotExist(
-//             contract,
-//             admin,
-//             curatorHandle,
-//             curatorUsername,
-//             curatorAvatar,
-//             curatorId,
-//             curatorBanner,
-//             false
-//         );
-//     }
-
-//     const attrs = attributes || [];
-
-//     const note = {
-//         sources: [
-//             "cori",
-//             "Telegram: " + guildName,
-//             // "Topic: " + channelName, // TODO
-//         ],
-//         title,
-//         content,
-//         tags,
-//         attachments,
-//         date_published: new Date(publishedTime).toISOString(),
-//         attributes: [
-//             {
-//                 trait_type: "curator",
-//                 value:
-//                     "csb://account:character-" +
-//                     curatorCharacterId +
-//                     "@crossbell",
-//             },
-//             ...attrs,
-//         ],
-//     } as NoteMetadata;
-//     console.debug("[DEBUG]", note);
-//     const noteId = (await contract.postNote(characterId, note)).data.noteId;
-//     return { characterId, noteId };
-// }
+    const indexer = createIndexer();
+    return await indexer.linklist.getMany(characterId);
+    // TODO: add pagination
+}

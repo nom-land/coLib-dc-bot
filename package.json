@@ -5,10 +5,11 @@
   "license": "MIT",
   "scripts": {
     "start:dev": "CROSSBELL_RPC_ADDRESS=http://127.0.0.1:8545 ts-node-dev src/index.ts",
-    "start:register": "CROSSBELL_RPC_ADDRESS=http://127.0.0.1:8545 ts-node-dev src/discord/registerCmds.ts",
     "start:dev:mainnet": "ts-node-dev src/index.ts",
     "start:prod": "node dist/index.js",
     "build": "tsc",
+    "bot:register": "CROSSBELL_RPC_ADDRESS=http://127.0.0.1:8545 ts-node-dev src/discord/registerCmds.ts",
+    "csb": "ts-node-dev src/crossbell/test.ts",
     "test": "CROSSBELL_RPC_ADDRESS=http://127.0.0.1:8545  vitest"
   },
   "devDependencies": {

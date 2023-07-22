@@ -4,9 +4,9 @@ Based on Crossbell, process the curation.
 
 import { settings } from "../config";
 import { parseRecord } from "../record/parser";
-import { Contract, Note, NoteMetadata } from "crossbell";
+import { Contract, NoteMetadata } from "crossbell";
 import { Curation, CurationReason, NoteId, RawCuration } from "./types";
-import { getCharacter, setup } from "../crossbell";
+import { getCharacter, getCharacterByAcc, getLinks, setup } from "../crossbell";
 import { getRecord } from "../record";
 import { Account } from "../crossbell/types";
 
@@ -14,7 +14,7 @@ export async function curateRecordInCommunity(
     c: Contract,
     curator: number,
     communityId: number,
-    list: string,
+    lists: string[],
     recordId: number,
     reason: CurationReason,
     rawData: RawCuration
@@ -46,6 +46,10 @@ export async function curateRecordInCommunity(
                 trait_type: "curation record",
                 value: recordId,
             },
+            {
+                trait_type: "suggested tags",
+                value: JSON.stringify(reason.tagSuggestions),
+            },
         ],
     } as NoteMetadata;
 
@@ -58,12 +62,14 @@ export async function curateRecordInCommunity(
         toCharacterId: recordId,
         metadataOrUri: metadata,
     });
-    await c.link.linkCharacter({
-        fromCharacterId: communityId,
-        toCharacterId: recordId,
-        linkType: `${settings.appName}-${list}`,
-    });
-
+    for (const list of lists) {
+        await c.link.linkCharacter({
+            fromCharacterId: communityId,
+            toCharacterId: recordId,
+            linkType: `${settings.appName}-${list}`,
+        });
+    }
+    console.log(metadata, lists);
     return data.noteId;
     // const result = await c.note.postForNote(
     //     curator,
@@ -74,25 +80,61 @@ export async function curateRecordInCommunity(
     // await c.link.linkNote(communityId, curator, result.data.noteId, list);
 }
 
+// Make a new linklist for the community
+export async function createCurationList(
+    adminPrivateKey: `0x${string}`,
+    community: Account,
+    list: string
+) {
+    const { contract, admin } = await setup(adminPrivateKey);
+
+    const res = await getCommunityLists(community);
+    if (res.listNames.includes(list)) {
+        return;
+    }
+
+    const communityId = await getCharacter(contract, admin, community, [
+        "POST_NOTE_FOR_NOTE",
+    ]);
+
+    //community links itself and then unlinks
+    console.log("linking...", list);
+    const tx = await contract.link.linkCharacter({
+        fromCharacterId: communityId,
+        toCharacterId: communityId,
+        linkType: `${settings.appName}-${list}`,
+    });
+    console.log(tx.transactionHash);
+    console.log("unlinking...", list);
+    const tx2 = await contract.link.unlinkCharacter({
+        fromCharacterId: communityId,
+        toCharacterId: communityId,
+        linkType: `${settings.appName}-${list}`,
+    });
+    console.log(tx2.transactionHash);
+}
+
+export async function getCommunityLists(c: Account) {
+    const links = await getLinks(c);
+    const count = links.count;
+    const listNames = links.list
+        .filter((l) => l.linkType.startsWith(settings.appName + "-"))
+        .map((l) => l.linkType.slice(settings.appName.length + 1));
+    // TODO: add pagination
+    return { count, listNames };
+}
 export async function processCuration(
     curation: Curation,
     url: string,
     adminPrivateKey: `0x${string}`
 ) {
-    const { curator, community, list, reason, raw: rawData } = curation;
+    const { curator, community, lists, reason, raw: rawData } = curation;
     const { contract, admin } = await setup(adminPrivateKey);
     if (!rawData) throw new Error("rawData is not defined");
     console.log("[DEBUG] Contract has been setup");
 
     const record = await parseRecord(url);
     console.log("[DEBUG] url has been parsed");
-
-    // create record note on Crossbell
-    const recordId = await getRecord(record, contract, admin);
-    console.log(
-        "[DEBUG] Record has been created, record id is",
-        recordId.toString()
-    );
 
     const communityId = await getCharacter(contract, admin, community, [
         "POST_NOTE_FOR_NOTE",
@@ -111,7 +153,14 @@ export async function processCuration(
         curatorId.toString()
     );
 
+    const recordId = await getRecord(record, contract, admin, curatorId);
+    console.log(
+        "[DEBUG] Record has been created, record id is",
+        recordId.toString()
+    );
+
     //community links characterId
+    // TODO: check if it has been linked
     await contract.link.linkCharacter({
         fromCharacterId: communityId,
         toCharacterId: curatorId,
@@ -127,7 +176,7 @@ export async function processCuration(
         contract,
         Number(curatorId),
         Number(communityId),
-        list,
+        lists,
         Number(recordId),
         reason,
         rawData
@@ -144,11 +193,20 @@ export async function processCuration(
 
 export async function processDiscussion(
     poster: Account,
+    community: Account,
     msgMetadata: NoteMetadata,
-    refNote: NoteId | null,
+    discussing: "note" | "record",
+    noteIdOrRecordId: string,
     adminPrivateKey: `0x${string}`
 ) {
     const { contract, admin } = await setup(adminPrivateKey);
+
+    const communityChar = await getCharacterByAcc({
+        c: contract,
+        acc: community,
+    });
+    const communityId = communityChar.characterId;
+
     const posterId = await getCharacter(contract, admin, poster, [
         "POST_NOTE_FOR_NOTE",
         "POST_NOTE",
@@ -157,19 +215,47 @@ export async function processDiscussion(
         characterId: posterId,
         metadataOrUri: {
             ...msgMetadata,
+            attributes: [
+                {
+                    trait_type: "entity type",
+                    value: "discussion",
+                },
+                {
+                    trait_type: "discussion community",
+                    value: communityId.toString(),
+                },
+            ],
         },
     };
+
+    let sources = [settings.appName];
+    if (msgMetadata.sources) sources = sources.concat(msgMetadata.sources);
+
+    noteOptions.metadataOrUri.sources = sources;
+
     let noteId: bigint;
-    if (refNote) {
+    if (discussing === "note") {
+        const noteIds = noteIdOrRecordId.split("-"); // characterId-noteId
+        const cId = Number(noteIds[0]);
+        const nId = Number(noteIds[1]);
+        const refNote = {
+            cId,
+            nId,
+        };
         noteId = (
             await contract.note.postForNote({
-                targetCharacterId: refNote.characterId,
-                targetNoteId: refNote.noteId,
+                targetCharacterId: refNote.cId,
+                targetNoteId: refNote.nId,
                 ...noteOptions,
             })
         ).data.noteId;
     } else {
-        noteId = (await contract.note.post(noteOptions)).data.noteId;
+        noteId = (
+            await contract.note.postForCharacter({
+                toCharacterId: noteIdOrRecordId,
+                ...noteOptions,
+            })
+        ).data.noteId;
     }
     return { characterId: posterId, noteId } as NoteId;
 }

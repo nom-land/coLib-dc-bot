@@ -6,7 +6,8 @@ import { encode, hashOf } from "../utils";
 export async function getRecord(
     record: Record,
     c: Contract,
-    admin: `0x${string}`
+    admin: `0x${string}`,
+    curator: bigint
 ): Promise<bigint> {
     // Upload the record on chain
     // console.assert(record.parsed, "record has not been parsed");
@@ -25,6 +26,12 @@ export async function getRecord(
     const handle = encode(title).slice(0, 12) + hashOf(url);
     console.log("handle is", handle);
 
-    characterId = await createNewRecordIfNotExist(c, admin, handle, record);
+    characterId = await createNewRecordIfNotExist(
+        c,
+        admin,
+        handle,
+        record,
+        curator
+    );
     return characterId;
 }

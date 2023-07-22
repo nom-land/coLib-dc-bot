@@ -1,6 +1,5 @@
 import {
     Client,
-    Collection,
     Events,
     GatewayIntentBits,
     Interaction,
@@ -16,15 +15,10 @@ import { Curation } from "../curation/types";
 import { Record } from "../record/types";
 import { loadKeyValuePairs } from "../utils/keyValueStore";
 import commands from "./commands";
+import { BotConfig } from "../config";
 const threadIds = new Map<string, string>();
 const discussionMsgIds = new Map<string, string>();
 const curationMsgIds = new Map<string, string>();
-
-export interface BotConfig {
-    botToken: string;
-    clientId: string;
-    adminPrivateKey: `0x${string}`;
-}
 
 export function start(
     cfg: BotConfig,
@@ -65,15 +59,19 @@ export function start(
         // get parent id of the channel
         const d = await message.channel.fetch();
 
-        console.log(JSON.stringify(message.channel));
+        console.log("message channel", JSON.stringify(message.channel));
         if (isDiscussion(message, threadIds, curationMsgIds)) {
+            console.log("this is a discussion message");
+
             handleDiscussionMsg(
                 message,
                 cfg.adminPrivateKey,
                 discussionMsgIds,
-                curationMsgIds
+                curationMsgIds,
+                threadIds
             );
         } else if (maybeCuration(message, cfg.clientId)) {
+            console.log("this is a curation message");
             handleCurationMsg(
                 message,
                 cfg,
@@ -83,12 +81,10 @@ export function start(
             );
         }
     });
-    console.log(commands["ls"]);
 
     // register a "/help" command
     client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         if (!interaction.isCommand()) return;
-        console.log(interaction.commandName);
         commands[interaction.commandName].execute(interaction);
     });
 

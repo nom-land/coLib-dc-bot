@@ -1,21 +1,41 @@
-import { Message } from "discord.js";
+import { Guild, Message, User } from "discord.js";
 import { Curation, NoteId } from "../curation/types";
 import { feedbackUrl, hashOf } from "../utils";
-import { BotConfig } from ".";
 import { Record } from "../record/types";
 import { addKeyValue } from "../utils/keyValueStore";
-import { settings } from "../config";
-import { processDiscussion } from "../curation";
+import { BotConfig, settings } from "../config";
+import { getCommunityLists, processDiscussion } from "../curation";
 import { Account } from "../crossbell/types";
 import { NoteMetadata } from "crossbell";
 import { mentionsBot } from "./utils";
+import { GuildChannelManager } from "discord.js";
 
 export function maybeCuration(message: Message, clientId: string) {
-    return mentionsBot(message, clientId);
+    return !message.author.bot && mentionsBot(message, clientId);
+}
+
+export function parseCommunity(guild: Guild) {
+    const { name, id } = guild;
+    return {
+        platform: "Discord",
+        nickname: name,
+        handle: hashOf(id, 12),
+        dao: true,
+    } as Account;
+}
+
+export function parsePoster(author: User) {
+    return {
+        nickname: author.username,
+        banner: author.bannerURL(),
+        avatar: author.avatarURL(),
+        platform: "Discord",
+        handle: hashOf(author.id, 12),
+    } as Account;
 }
 
 async function parseMessage(message: Message) {
-    const { guild, guildId, channelId, content, author } = message;
+    const { guild, guildId, channelId, author } = message;
     if (!guild || !guildId) {
         console.log("Fail to parse message guild.");
         return null;
@@ -23,59 +43,121 @@ async function parseMessage(message: Message) {
     const guildName = guild.name;
     const channelName = (await guild.channels.fetch(channelId))?.name;
     return {
-        poster: {
-            nickname: author.username,
-            banner: author.bannerURL(),
-            avatar: author.avatarURL(),
-            platform: "Discord",
-            handle: hashOf(author.id, 12),
-        } as Account,
+        poster: parsePoster(author),
         message: {
             content: message.cleanContent,
             sources: [guildName, channelName],
             date_published: new Date(message.createdTimestamp).toISOString(),
         } as NoteMetadata,
-        community: {
-            platform: "Discord",
-            nickname: guildName,
-            handle: hashOf(guildId, 12),
-            dao: true,
-        } as Account,
+        community: parseCommunity(guild),
     };
 }
+
+async function extractTagsOrLists(
+    channels: GuildChannelManager,
+    cleanContent: string
+) {
+    const tagsOrList = [] as string[];
+
+    const mentionChannelPattern = /<#\d+>/g;
+
+    // Extract all #channel patterns, and get name from the id
+    const mentionIds = cleanContent.match(mentionChannelPattern);
+    if (mentionIds) {
+        for (let mentionId of mentionIds) {
+            // mentionId is <#xxxx>, slice only the id
+            mentionId = mentionId.slice(2, -1);
+            const channel = await channels.fetch(mentionId);
+            if (channel?.name) tagsOrList.push(`#${channel.name}`);
+        }
+    }
+
+    // Replace all #channel patterns with ""
+    cleanContent = cleanContent.replace(mentionChannelPattern, "");
+
+    // Get #string patterns
+    const tagsOrListPattern = /#[^\s]+/g;
+    const tags = cleanContent.match(tagsOrListPattern);
+
+    tags?.map((tag) => tagsOrList.push(tag));
+    return tagsOrList;
+}
+
+function getContentBeforeAndAfterBot(botId: string, content: string) {
+    const contentAfterBot = content
+        .slice(content.indexOf(botId) + botId.length)
+        .trim();
+
+    const contentBeforeBot = content.slice(0, content.indexOf(botId) - 2);
+    return { contentAfterBot, contentBeforeBot };
+}
+
+// Extract the first URL
+function extractFirstUrl(content: string) {
+    const urlPattern = /(http[s]?:\/\/[^<\s]+|ipfs:\/\/[^<\s]+)/g;
+
+    const urls = content.match(urlPattern);
+    if (!urls) {
+        return { url: null, cleanedContent: content };
+    }
+
+    const url = urls[0];
+
+    return { url, cleanedContent: content.replace(urlPattern, "").trim() };
+}
+
 export async function parseAsCurationMsg(message: Message) {
+    console.log(message);
     const data = await parseMessage(message);
     if (!data) {
         return null;
     }
 
-    const urlPattern = /(http[s]?:\/\/[^<\s]+|ipfs:\/\/[^<\s]+)/g;
-
-    //TODO: <#xxx> and parse forum name
-    const mentionPattern = /<@\d+>/g;
-
-    // Extract the first URL
-    const urls = message.content.match(urlPattern);
-    if (!urls) {
+    if (!message.guild?.channels) {
         return null;
     }
+    // Suggested tags and list is after the @bot
+    const botId = settings.botConfig.clientId;
+    // TODO: use message.cleancontent...
 
-    const url = urls[0];
+    const { contentBeforeBot, contentAfterBot } = getContentBeforeAndAfterBot(
+        botId,
+        message.content
+    );
 
-    // Clean the content
-    const cleanedContent = message.content
-        .replace(urlPattern, "")
-        .replace(mentionPattern, "")
-        .trim();
+    const { url, cleanedContent } = extractFirstUrl(contentBeforeBot);
+    if (!url) return null;
+
+    const tagsOrList = await extractTagsOrLists(
+        message.guild?.channels,
+        contentAfterBot
+    );
+
+    // Elements existed in the community's curation lists are lists, otherwise are tags
+    const existedCurationLists = (await getCommunityLists(data.community))
+        .listNames;
+
+    const tagSuggestions = [] as string[];
+    const listSuggestions = [];
+    tagsOrList?.forEach((tagOrList) => {
+        if (existedCurationLists.includes(tagOrList.slice(1))) {
+            listSuggestions.push(tagOrList.slice(1));
+        } else {
+            tagSuggestions.push(tagOrList.slice(1));
+        }
+    });
+    if (listSuggestions.length === 0) {
+        listSuggestions.push(settings.defaultCurationList);
+    }
 
     return {
         rawCuration: {
             raw: data.message,
             curator: data.poster,
-            list: "general", //TODO
+            lists: listSuggestions,
             reason: {
                 comment: cleanedContent,
-                tagSuggestions: [],
+                tagSuggestions,
             },
             community: data.community,
         } as Curation,
@@ -104,7 +186,7 @@ export async function handleCurationMsg(
     console.log(JSON.stringify(message));
     const data = await parseAsCurationMsg(message);
     if (!data) {
-        await message.reply("Hi! I am " + settings.appName);
+        await message.reply(settings.curatorUsageMsg);
         return;
     }
     const { url, rawCuration } = data;
@@ -113,7 +195,7 @@ export async function handleCurationMsg(
         name: message.cleanContent.slice(0, 20) + "...",
     });
 
-    const hdl = await thread.send("⛏️ Processing...");
+    const hdl = await thread.send(settings.loadingPrompt);
 
     if (!rawCuration) {
         console.log("parsed error"); //TODO: reply on discord
@@ -178,8 +260,15 @@ export function isDiscussion(
     const isReply2Curation = curationMsgIds.has(
         message.reference?.messageId || ""
     );
-    console.log(message.reference?.messageId, isReply2Curation);
-    return inCurationThread || isReply2Curation;
+    const authorIsNotBot = !message.author.bot;
+    return authorIsNotBot && (inCurationThread || isReply2Curation);
+}
+
+export function getDiscussingRecord(
+    discussion: Message,
+    threadIds: Map<string, string>
+) {
+    return threadIds.get(discussion.channelId);
 }
 
 // Post the message on Crossbell
@@ -187,40 +276,43 @@ export async function handleDiscussionMsg(
     message: Message,
     adminPrivateKey: `0x${string}`,
     discussionMsgIds: Map<string, string>,
-    curationMsgIds: Map<string, string>
+    curationMsgIds: Map<string, string>,
+    threadIds: Map<string, string>
 ) {
     console.log("handling discussion message...");
     const data = await parseMessage(message);
     if (!data) {
         return;
     }
+    let noteIdOrRecordId = null;
+    let discussing: "note" | "record";
+
     // if this message is replying to another message
-    let refNote: NoteId | null = null;
     if (message.reference) {
+        discussing = "note";
         const refMsgId = message.reference.messageId;
         console.log("[DEBUG] there's refNote: ", refMsgId);
-
         if (refMsgId) {
             const note =
                 discussionMsgIds.get(refMsgId) || curationMsgIds.get(refMsgId);
-            if (note) {
-                const noteIds = note.split("-"); // characterId-noteId
-                const characterId = Number(noteIds[0]);
-                const noteId = Number(noteIds[1]);
-                refNote = {
-                    characterId,
-                    noteId,
-                };
-                console.log(
-                    "[DEBUG] refNote parsed as: " + characterId + "-" + noteId
-                );
-            }
+            if (note) noteIdOrRecordId = note;
         }
+    } else {
+        discussing = "record";
+        const discussingRecordId = getDiscussingRecord(message, threadIds);
+        if (discussingRecordId) noteIdOrRecordId = discussingRecordId;
     }
+
+    if (!noteIdOrRecordId) {
+        return;
+    }
+
     const noteId = await processDiscussion(
         data.poster,
+        data.community,
         data.message,
-        refNote,
+        discussing,
+        noteIdOrRecordId,
         adminPrivateKey
     );
 
