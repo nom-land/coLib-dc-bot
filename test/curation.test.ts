@@ -53,7 +53,7 @@ const mockCuration = function () {
             guildId: "DDAO",
             handle: "DDAO",
         },
-        list: "all about curation",
+        lists: ["all about curation"],
     } as Curation;
 };
 
