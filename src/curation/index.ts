@@ -19,7 +19,7 @@ export async function curateRecordInCommunity(
     reason: CurationReason,
     rawData: RawCuration
 ) {
-    // 1. Curator 发一条 note，且这个note指向 Record（postnote4note）
+    // 1. Curator 发一条 note，且这个note指向 Record
     // 2. Community Character 把这个 note 放到 community list 里（link）
 
     let sources = [settings.appName];
@@ -41,6 +41,10 @@ export async function curateRecordInCommunity(
             {
                 trait_type: "curation community",
                 value: communityId,
+            },
+            {
+                trait_type: "curation lists",
+                value: JSON.stringify(lists),
             },
             {
                 trait_type: "curation record",
@@ -179,6 +183,7 @@ export async function processCuration(
         lists,
         Number(recordId),
         reason,
+
         rawData
     );
     console.log("[DEBUG] Curation has been finished");
@@ -250,6 +255,7 @@ export async function processDiscussion(
             })
         ).data.noteId;
     } else {
+        // but it's not useful... at least for now
         noteId = (
             await contract.note.postForCharacter({
                 toCharacterId: noteIdOrRecordId,

@@ -7,7 +7,7 @@ export function hashOf(content: string, digits = 4, suffix = true): string {
     else return hash.slice(0, digits);
 }
 
-export function encode(content: string | undefined) {
+export function encode(content: string) {
     let str = punycode.encode(content);
     // remove " " and "\n"
     str = str.replace(/[\s\n]/g, "");

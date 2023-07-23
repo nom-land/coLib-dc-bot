@@ -1,5 +1,5 @@
 import { Guild, Message, User } from "discord.js";
-import { Curation, NoteId } from "../curation/types";
+import { Curation } from "../curation/types";
 import { feedbackUrl, hashOf } from "../utils";
 import { Record } from "../record/types";
 import { addKeyValue } from "../utils/keyValueStore";
@@ -264,11 +264,15 @@ export function isDiscussion(
     return authorIsNotBot && (inCurationThread || isReply2Curation);
 }
 
-export function getDiscussingRecord(
+export function getDiscussingCuration(
     discussion: Message,
-    threadIds: Map<string, string>
+    threadIds: Map<string, string>,
+    curationMsgIds: Map<string, string>
 ) {
-    return threadIds.get(discussion.channelId);
+    // the created thread and the message it originated from shares the same id
+    const threadId = threadIds.get(discussion.channelId);
+    if (threadId) return curationMsgIds.get(threadId);
+    return null;
 }
 
 // Post the message on Crossbell
@@ -285,11 +289,9 @@ export async function handleDiscussionMsg(
         return;
     }
     let noteIdOrRecordId = null;
-    let discussing: "note" | "record";
 
     // if this message is replying to another message
     if (message.reference) {
-        discussing = "note";
         const refMsgId = message.reference.messageId;
         console.log("[DEBUG] there's refNote: ", refMsgId);
         if (refMsgId) {
@@ -298,8 +300,11 @@ export async function handleDiscussionMsg(
             if (note) noteIdOrRecordId = note;
         }
     } else {
-        discussing = "record";
-        const discussingRecordId = getDiscussingRecord(message, threadIds);
+        const discussingRecordId = getDiscussingCuration(
+            message,
+            threadIds,
+            curationMsgIds
+        );
         if (discussingRecordId) noteIdOrRecordId = discussingRecordId;
     }
 
@@ -311,7 +316,7 @@ export async function handleDiscussionMsg(
         data.poster,
         data.community,
         data.message,
-        discussing,
+        "note",
         noteIdOrRecordId,
         adminPrivateKey
     );

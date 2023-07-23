@@ -67,6 +67,7 @@ async function createListChannelIfNotExisted(guild: Guild, name: string) {
                 name: name,
                 reason: "New list added to the community library.",
                 parent: colibCategoryId,
+                type: ChannelType.GuildForum,
             });
             curationChannelId = newChannel.id;
             channelName = newChannel.name;
@@ -134,7 +135,9 @@ module.exports = {
             );
         } catch (e) {
             console.error(e);
-            interaction.editReply("Error: failed to create list");
+            interaction.editReply(
+                "Error: failed to create list. This command requires the sever has access to forum type channel."
+            );
             return;
         }
 
