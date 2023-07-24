@@ -23,7 +23,15 @@ interface ExtendedArticleData extends ArticleData {
 }
 
 export async function parseRecord(url: string) {
-    const article = await extract(url);
+    let article: ArticleData | null = null;
+    try {
+        article = await extract(url);
+    } catch (e) {
+        console.log(e);
+        article = {
+            url,
+        };
+    }
     const extendedArticleData = {
         authors: [article?.author || ""],
         language: "unknown",
