@@ -270,7 +270,7 @@ export function getDiscussingCuration(
     curationMsgIds: Map<string, string>
 ) {
     // the created thread and the message it originated from shares the same id
-    const threadId = threadIds.get(discussion.channelId);
+    const threadId = discussion.channelId;
     if (threadId) return curationMsgIds.get(threadId);
     return null;
 }
