@@ -11,7 +11,7 @@ module.exports = {
     async execute(interaction: Interaction) {
         if (!interaction.isCommand()) return; // It has to be here...
 
-        interaction.reply(settings.loadingPrompt);
+        await interaction.reply(settings.loadingPrompt);
         const guild = interaction.guild;
         if (!guild) {
             interaction.reply("Error: guild not found");
@@ -22,7 +22,7 @@ module.exports = {
         const { count, listNames } = await getCommunityLists(c);
 
         // Reply there are "count" lists in the community, and list all names
-        interaction.editReply(
+        await interaction.editReply(
             `There are ${count} lists in the community: ${listNames.join(", ")}`
         );
     },
