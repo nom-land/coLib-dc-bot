@@ -18,6 +18,12 @@ export function encode(content: string) {
     return str;
 }
 
-export function feedbackUrl(cid: string, rid: string) {
-    return `https://colib-home.vercel.app/community/${cid}/record/${rid}`;
+export function feedbackUrl(
+    cid: string,
+    rid: string,
+    curatorId: string,
+    noteId: string
+) {
+    // return `https://colib-home.vercel.app/community/${cid}/record/${rid}`;
+    return `https://colib-home.vercel.app/curation/${curatorId}-${noteId}`;
 }

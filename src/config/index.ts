@@ -27,7 +27,7 @@ export const settings = {
     defaultCurationList: "general", //will be used in the new created linklist in the community
     botConfig,
     loadingPrompt:
-        "⛏️ Processing...(I know I am slow, but decentralization has paid off. And I will be fast!)",
+        "⛏️ Processing...(Sorry I'm a little slow for now - but all my content is stored decentrally using blockchain so it's worth it)",
     curatorUsageMsg: `
     {{url}} reason to share... <@${botConfig.clientId}> #tag1 #tag2 #curation-list
 

@@ -67,8 +67,7 @@ export function start(
                 message,
                 cfg.adminPrivateKey,
                 discussionMsgIds,
-                curationMsgIds,
-                threadIds
+                curationMsgIds
             );
         } else if (maybeCuration(message, cfg.clientId)) {
             console.log("this is a curation message");

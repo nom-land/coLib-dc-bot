@@ -240,8 +240,11 @@ export async function handleCurationMsg(
         hdl.edit(
             `🎉 Curation is successfully processed. See: ${feedbackUrl(
                 cid,
-                rid
-            )}`
+                rid,
+                curatorId,
+                noteId
+            )}
+            ✉️ Attention: all messages in this thread or replies to this curation will be recorded on chain`
         );
     } catch (error) {
         console.log(error); //TODO: reply on discord
@@ -266,7 +269,6 @@ export function isDiscussion(
 
 export function getDiscussingCuration(
     discussion: Message,
-    threadIds: Map<string, string>,
     curationMsgIds: Map<string, string>
 ) {
     // the created thread and the message it originated from shares the same id
@@ -280,8 +282,7 @@ export async function handleDiscussionMsg(
     message: Message,
     adminPrivateKey: `0x${string}`,
     discussionMsgIds: Map<string, string>,
-    curationMsgIds: Map<string, string>,
-    threadIds: Map<string, string>
+    curationMsgIds: Map<string, string>
 ) {
     console.log("handling discussion message...");
     const data = await parseMessage(message);
@@ -302,7 +303,6 @@ export async function handleDiscussionMsg(
     } else {
         const discussingRecordId = getDiscussingCuration(
             message,
-            threadIds,
             curationMsgIds
         );
         if (discussingRecordId) noteIdOrRecordId = discussingRecordId;
