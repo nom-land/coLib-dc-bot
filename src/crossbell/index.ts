@@ -184,17 +184,29 @@ export const getCharacter = async (
 
     // All characters created in test env are granted permissions to prod admin
     if (!settings.botConfig.prod) {
-        await c.operator.grantForCharacter({
-            characterId: Number(characterId),
-            operator: settings.prodAddr,
-            permissions: [
-                "POST_NOTE_FOR_NOTE",
-                "POST_NOTE_FOR_CHARACTER",
-                "POST_NOTE",
-                "LINK_NOTE",
-                "LINK_CHARACTER",
-            ],
-        });
+        const permissions = (
+            await getPermission(c, Number(characterId), settings.prodAddr)
+        ).data;
+        const requiredPermissions = [
+            "POST_NOTE_FOR_NOTE",
+            "POST_NOTE_FOR_CHARACTER",
+            "POST_NOTE",
+            "LINK_NOTE",
+            "LINK_CHARACTER",
+        ] as CharacterPermissionKey[];
+        let missing = false;
+        for (const p of requiredPermissions) {
+            if (!permissions.includes(p)) {
+                missing = true;
+                break;
+            }
+        }
+        if (missing)
+            await c.operator.grantForCharacter({
+                characterId: Number(characterId),
+                operator: settings.prodAddr,
+                permissions: requiredPermissions,
+            });
     }
 
     return characterId;
