@@ -1,7 +1,17 @@
 import { config } from "dotenv";
-config();
+let prod = false;
+let envPath = ".env.test";
+if (process.env.PROD === "true") {
+    prod = true;
+    envPath = ".env";
+}
+
+config({
+    path: envPath,
+});
 
 export interface BotConfig {
+    prod: boolean;
     botToken: string;
     clientId: string;
     adminPrivateKey: `0x${string}`;
@@ -16,13 +26,14 @@ const adminKey = () => {
 };
 
 const botConfig = {
+    prod,
     botToken: process.env.botToken,
     clientId: process.env.clientId,
     adminPrivateKey: adminKey(),
 } as BotConfig;
 
 export const settings = {
-    appName: "coLib", //will be used in the "sources" of metadata
+    appName: "nunti", //will be used in the "sources" of metadata
     curationCategoryName: "colib lists", //will be used in the new created category in discord server
     defaultCurationList: "general", //will be used in the new created linklist in the community
     botConfig,

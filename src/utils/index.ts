@@ -1,3 +1,5 @@
+import { settings } from "../config";
+
 const md5 = require("md5");
 const punycode = require("punycode/");
 
@@ -24,6 +26,10 @@ export function feedbackUrl(
     curatorId: string,
     noteId: string
 ) {
-    // return `https://colib-home.vercel.app/community/${cid}/record/${rid}`;
-    return `https://colib-home.vercel.app/curation/${curatorId}-${noteId}`;
+    if (settings.botConfig.prod === true) {
+        // return `https://colib-home.vercel.app/community/${cid}/record/${rid}`;
+        return `https://colib-home.vercel.app/curation/${curatorId}-${noteId}`;
+    } else {
+        return `https://colib.app/curation/${curatorId}-${noteId}`;
+    }
 }
