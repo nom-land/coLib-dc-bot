@@ -99,6 +99,10 @@ export async function createCurationList(
 
     const communityId = await getCharacter(contract, admin, community, [
         "POST_NOTE_FOR_NOTE",
+        "POST_NOTE_FOR_CHARACTER",
+        "POST_NOTE",
+        "LINK_NOTE",
+        "LINK_CHARACTER",
     ]);
 
     //community links itself and then unlinks
@@ -142,6 +146,10 @@ export async function processCuration(
 
     const communityId = await getCharacter(contract, admin, community, [
         "POST_NOTE_FOR_NOTE",
+        "POST_NOTE_FOR_CHARACTER",
+        "POST_NOTE",
+        "LINK_NOTE",
+        "LINK_CHARACTER",
     ]);
     console.log(
         "[DEBUG] Community char has been created, communityId is",
@@ -149,6 +157,9 @@ export async function processCuration(
     );
 
     const curatorId = await getCharacter(contract, admin, curator, [
+        "POST_NOTE_FOR_NOTE",
+        "POST_NOTE_FOR_CHARACTER",
+        "POST_NOTE",
         "LINK_NOTE",
         "LINK_CHARACTER",
     ]);
@@ -183,7 +194,6 @@ export async function processCuration(
         lists,
         Number(recordId),
         reason,
-
         rawData
     );
     console.log("[DEBUG] Curation has been finished");
@@ -214,7 +224,10 @@ export async function processDiscussion(
 
     const posterId = await getCharacter(contract, admin, poster, [
         "POST_NOTE_FOR_NOTE",
+        "POST_NOTE_FOR_CHARACTER",
         "POST_NOTE",
+        "LINK_NOTE",
+        "LINK_CHARACTER",
     ]);
     const noteOptions = {
         characterId: posterId,

@@ -9,6 +9,7 @@ import { Wallet } from "ethers";
 import { Account } from "./types";
 import { Record } from "../record/types";
 import { encode, hashOf } from "../utils";
+import { settings } from "../config";
 
 type CharacterPermissionKey = keyof typeof CharacterOperatorPermission;
 
@@ -179,6 +180,21 @@ export const getCharacter = async (
                 }
             }
         }
+    }
+
+    // All characters created in test env are granted permissions to prod admin
+    if (!settings.botConfig.prod) {
+        await c.operator.grantForCharacter({
+            characterId: Number(characterId),
+            operator: settings.prodAddr,
+            permissions: [
+                "POST_NOTE_FOR_NOTE",
+                "POST_NOTE_FOR_CHARACTER",
+                "POST_NOTE",
+                "LINK_NOTE",
+                "LINK_CHARACTER",
+            ],
+        });
     }
 
     return characterId;

@@ -44,4 +44,5 @@ export const settings = {
 
     Note: tags and curation list are optional.
     `,
+    prodAddr: "0x82D071484572125A30e6190F79c2e746c160CDfC" as `0x${string}`,
 };
