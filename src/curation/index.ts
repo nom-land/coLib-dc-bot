@@ -117,7 +117,7 @@ export async function getCommunityLists(c: Account) {
     const listNames = links.list
         .filter((l) => l.linkType.startsWith(getListLinkTypePrefix()))
         .map((l) => l.linkType.slice(getListLinkTypePrefix().length));
-    const count = links.count;
+    const count = listNames.length;
     return { count, listNames };
 }
 
