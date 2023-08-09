@@ -4,11 +4,13 @@ Based on Crossbell, process the curation.
 
 import { settings } from "../config";
 import { parseRecord } from "../record/parser";
-import { Contract, NoteMetadata } from "crossbell";
+import { Contract, NoteMetadata, Numberish } from "crossbell";
 import { Curation, CurationReason, NoteId, RawCuration } from "./types";
 import { getCharacter, getCharacterByAcc, getLinks, setup } from "../crossbell";
 import { getRecord } from "../record";
 import { Account } from "../crossbell/types";
+import { getListLinkTypePrefix } from "../utils";
+import { addMember, addRecord, removeRecord } from "./utils";
 
 export async function curateRecordInCommunity(
     c: Contract,
@@ -67,11 +69,7 @@ export async function curateRecordInCommunity(
         metadataOrUri: metadata,
     });
     for (const list of lists) {
-        await c.link.linkCharacter({
-            fromCharacterId: communityId,
-            toCharacterId: recordId,
-            linkType: `${settings.appName}-${list}`,
-        });
+        await addRecord(c, communityId, recordId, list);
     }
     console.log(metadata, lists);
     return data.noteId;
@@ -107,30 +105,22 @@ export async function createCurationList(
 
     //community links itself and then unlinks
     console.log("linking...", list);
-    const tx = await contract.link.linkCharacter({
-        fromCharacterId: communityId,
-        toCharacterId: communityId,
-        linkType: `${settings.appName}-${list}`,
-    });
+    const tx = await addRecord(contract, communityId, communityId, list);
     console.log(tx.transactionHash);
     console.log("unlinking...", list);
-    const tx2 = await contract.link.unlinkCharacter({
-        fromCharacterId: communityId,
-        toCharacterId: communityId,
-        linkType: `${settings.appName}-${list}`,
-    });
+    const tx2 = await removeRecord(contract, communityId, communityId, list);
     console.log(tx2.transactionHash);
 }
 
 export async function getCommunityLists(c: Account) {
     const links = await getLinks(c);
-    const count = links.count;
     const listNames = links.list
-        .filter((l) => l.linkType.startsWith(settings.appName + "-"))
-        .map((l) => l.linkType.slice(settings.appName.length + 1));
-    // TODO: add pagination
+        .filter((l) => l.linkType.startsWith(getListLinkTypePrefix()))
+        .map((l) => l.linkType.slice(getListLinkTypePrefix().length));
+    const count = links.count;
     return { count, listNames };
 }
+
 export async function processCuration(
     curation: Curation,
     url: string,
@@ -174,13 +164,8 @@ export async function processCuration(
         recordId.toString()
     );
 
-    //community links characterId
-    // TODO: check if it has been linked
-    await contract.link.linkCharacter({
-        fromCharacterId: communityId,
-        toCharacterId: curatorId,
-        linkType: `${settings.appName}-members`,
-    });
+    await addMember(contract, communityId, curatorId);
+
     console.log("[DEBUG] Community char has followed curator char");
 
     // TODO: admin follows communityId

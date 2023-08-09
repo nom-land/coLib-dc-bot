@@ -3,15 +3,26 @@ import commands from "./commands";
 
 import { config } from "dotenv";
 
-config();
+let prod = false;
+let envPath = ".env.test";
+if (process.env.PROD === "true") {
+    prod = true;
+    envPath = ".env";
+}
+
+config({
+    path: envPath,
+});
 
 // flatten the commands object into an array
 const commandsArr = [] as string[];
-
+console.log(Object.values(commands)[0].data.toJSON());
 Object.values(commands).forEach((c) => commandsArr.push(c.data.toJSON()));
 
 const botToken = process.env["botToken"] || "";
 const clientId = process.env["clientId"] || "";
+
+console.log(envPath, botToken);
 
 // console.log(commands["help"].execute());
 // Construct and prepare an instance of the REST module

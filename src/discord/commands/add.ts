@@ -86,6 +86,7 @@ async function createListChannelIfNotExisted(guild: Guild, name: string) {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("add")
+        .setDescription("Add a new topic to the community library.")
         // add an user option with name "list" and description "The new list name to add to the community library"
         .addStringOption((option) =>
             option

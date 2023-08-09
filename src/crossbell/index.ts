@@ -128,7 +128,9 @@ export const getCharacterByAcc = async (options: {
     admin?: `0x${string}`;
     createIfNotExist?: true; // if this is true, admin has to be provided
 }) => {
-    const handle = formatHandle(options.acc);
+    const prefix = settings.botConfig.prod ? "" : "test-";
+    const handle = (prefix + formatHandle(options.acc)).slice(0, 31);
+
     let existed = true;
     const { c, acc, admin, createIfNotExist } = options;
     const { data } = await c.character.getByHandle({ handle });
@@ -234,6 +236,6 @@ export async function getLinks(acc: Account) {
     if (!existed) return { count: 0, list: [] };
 
     const indexer = createIndexer();
-    return await indexer.linklist.getMany(characterId);
+    return await indexer.linklist.getMany(characterId, { limit: 1000 });
     // TODO: add pagination
 }
