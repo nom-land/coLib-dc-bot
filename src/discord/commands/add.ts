@@ -8,6 +8,7 @@ import {
 import { settings } from "../../config";
 import { createCurationList } from "../../curation";
 import { parseCommunity } from "../handle";
+import { log } from "../../utils/log";
 
 // Get the curation category channel id. If it doesn't exist, create one.
 function getCategoryAndSubChannel(guild: Guild, channelName: string) {
@@ -77,7 +78,7 @@ async function createListChannelIfNotExisted(guild: Guild, name: string) {
 
         // TODO: permission control of the new channel
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return { curationChannelId: null, channelName: null };
     }
 }
@@ -110,7 +111,7 @@ module.exports = {
         const listName = interaction.options.get("list")?.value;
         // if list name is not provided, reply "Invalid list name"
         if (!listName || typeof listName !== "string") {
-            console.error("Invalid list name");
+            log.error("Invalid list name");
             interaction.reply("Invalid list name");
             return;
         }
@@ -135,7 +136,7 @@ module.exports = {
                 channelName
             );
         } catch (e) {
-            console.error(e);
+            log.error(e);
             interaction.editReply(
                 "Error: failed to create list. This command requires the sever has access to forum type channel."
             );

@@ -23,7 +23,8 @@ module.exports = {
 
         // Reply there are "count" lists in the community, and list all names
         await interaction.editReply(
-            `There are ${count} lists in the community: ${listNames.join(", ")}`
+            `There are ${count} lists in the community` +
+                (count > 0 ? `: ${listNames.join(", ")}` : `.`)
         );
     },
 };

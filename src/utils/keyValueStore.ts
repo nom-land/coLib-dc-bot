@@ -48,7 +48,6 @@ export function loadKeyValuePairs(
     table?: string
 ): void {
     const filePath = getFilePath(table);
-    console.log(filePath);
 
     try {
         if (!fs.existsSync(filePath)) {

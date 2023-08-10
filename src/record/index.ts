@@ -32,8 +32,6 @@ export async function getRecord(
             ? encode(title).slice(0, 12) + hashOf(url, 12)
             : hashOf(url, 12));
 
-    console.log("handle is", handle);
-
     characterId = await createNewRecordIfNotExist(
         c,
         admin,

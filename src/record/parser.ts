@@ -1,3 +1,4 @@
+import { log } from "../utils/log";
 import { Record } from "./types";
 import { ArticleData, extract } from "@extractus/article-extractor";
 
@@ -27,7 +28,7 @@ export async function parseRecord(url: string) {
     try {
         article = await extract(url);
     } catch (e) {
-        console.log(e);
+        log.error(e);
         article = {
             url,
         };

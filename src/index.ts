@@ -3,6 +3,7 @@ import { processCuration } from "./curation";
 import { start } from "./discord";
 import fetch from "isomorphic-fetch"; // 或者 'cross-fetch'
 import { settings } from "./config";
+import { log } from "./utils/log";
 
 //Localhost
 if (process.env.CROSSBELL_RPC_ADDRESS === "http://127.0.0.1:8545") {
@@ -16,15 +17,15 @@ globalThis.fetch = fetch;
 
 function main() {
     if (!process.env.botToken) {
-        console.error("Invalid botToken");
+        log.error("Invalid botToken");
         return;
     }
     if (!process.env.clientId) {
-        console.error("Invalid clientId");
+        log.error("Invalid clientId");
         return;
     }
     if (!process.env.adminPrivateKey) {
-        console.error("Invalid admin private key");
+        log.error("Invalid admin private key");
         return;
     }
 

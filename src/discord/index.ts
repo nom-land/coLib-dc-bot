@@ -16,6 +16,7 @@ import { Record } from "../record/types";
 import { loadKeyValuePairs } from "../utils/keyValueStore";
 import commands from "./commands";
 import { BotConfig } from "../config";
+import { log } from "../utils/log";
 const threadIds = new Map<string, string>();
 const discussionMsgIds = new Map<string, string>();
 const curationMsgIds = new Map<string, string>();
@@ -52,17 +53,14 @@ export function start(
     });
 
     client.on("ready", () => {
-        console.log(`Logged in as ${client.user?.tag}!`);
+        log.info(`Logged in as ${client.user?.tag}!`);
     });
 
     client.on("messageCreate", async (message: Message) => {
         // get parent id of the channel
         const d = await message.channel.fetch();
 
-        console.log("message channel", JSON.stringify(message.channel));
         if (isDiscussion(message, threadIds, curationMsgIds)) {
-            console.log("this is a discussion message");
-
             handleDiscussionMsg(
                 message,
                 cfg.adminPrivateKey,
@@ -70,7 +68,6 @@ export function start(
                 curationMsgIds
             );
         } else if (maybeCuration(message, cfg.clientId)) {
-            console.log("this is a curation message");
             handleCurationMsg(
                 message,
                 cfg,

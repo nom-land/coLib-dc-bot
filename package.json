@@ -16,16 +16,18 @@
     "test": "CROSSBELL_RPC_ADDRESS=http://127.0.0.1:8545  vitest"
   },
   "devDependencies": {
+    "@types/bunyan": "^1.8.8",
     "@types/isomorphic-fetch": "^0.0.36",
     "@types/node": "^18.14.0",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^4.9.5",
+    "typescript": "^5.1.6",
     "vitest": "^0.28.5"
   },
   "dependencies": {
-    "@extractus/article-extractor": "^7.2.16",
+    "@extractus/article-extractor": "^7.3.1",
     "@types/require-all": "^3.0.3",
+    "bunyan": "^1.8.15",
     "crossbell": "^1.5.5",
     "discord.js": "^14.11.0",
     "dotenv": "^16.0.3",

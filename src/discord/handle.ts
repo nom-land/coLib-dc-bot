@@ -9,6 +9,7 @@ import { Account } from "../crossbell/types";
 import { NoteMetadata } from "crossbell";
 import { mentionsBot } from "./utils";
 import { GuildChannelManager } from "discord.js";
+import { log } from "../utils/log";
 
 export function maybeCuration(message: Message, clientId: string) {
     return !message.author.bot && mentionsBot(message, clientId);
@@ -37,7 +38,7 @@ export function parsePoster(author: User) {
 async function parseMessage(message: Message) {
     const { guild, guildId, channelId, author } = message;
     if (!guild || !guildId) {
-        console.log("Fail to parse message guild.");
+        log.error("Fail to parse message guild.");
         return null;
     }
     const guildName = guild.name;
@@ -107,7 +108,6 @@ function extractFirstUrl(content: string) {
 }
 
 export async function parseAsCurationMsg(message: Message) {
-    console.log(message);
     const data = await parseMessage(message);
     if (!data) {
         return null;
@@ -183,7 +183,7 @@ export async function handleCurationMsg(
     threadIds: Map<string, string>,
     curationMsgIds: Map<string, string>
 ) {
-    console.log(JSON.stringify(message));
+    log.info(JSON.stringify(message));
     const data = await parseAsCurationMsg(message);
     if (!data) {
         await message.reply(settings.curatorUsageMsg);
@@ -198,7 +198,7 @@ export async function handleCurationMsg(
     const hdl = await thread.send(settings.loadingPrompt);
 
     if (!rawCuration) {
-        console.log("parsed error"); //TODO: reply on discord
+        log.error("parsed error"); //TODO: reply on discord
         hdl.reply("curation is not successfully parsed");
         return;
     }
@@ -216,7 +216,7 @@ export async function handleCurationMsg(
         if (addKeyValue(thread.id, rid, "threads")) {
             threadIds.set(thread.id, rid);
         } else {
-            console.error(
+            log.error(
                 "addKeyValue failed. thread id: " +
                     thread.id +
                     " record id: " +
@@ -227,7 +227,7 @@ export async function handleCurationMsg(
         if (addKeyValue(message.id, curatorId + "-" + noteId, "curationMsgs")) {
             curationMsgIds.set(message.id, curatorId + "-" + noteId);
         } else {
-            console.error(
+            log.error(
                 "addKeyValue failed. message id: " +
                     message.id +
                     " curator id: " +
@@ -247,7 +247,7 @@ export async function handleCurationMsg(
             ✉️ Attention: all messages in this thread or replies to this curation will be recorded on chain`
         );
     } catch (error) {
-        console.log(error); //TODO: reply on discord
+        log.error(error); //TODO: reply on discord
         hdl.edit("😢 Curation is not successfully processed");
     }
 }
@@ -284,7 +284,6 @@ export async function handleDiscussionMsg(
     discussionMsgIds: Map<string, string>,
     curationMsgIds: Map<string, string>
 ) {
-    console.log("handling discussion message...");
     const data = await parseMessage(message);
     if (!data) {
         return;
@@ -294,7 +293,7 @@ export async function handleDiscussionMsg(
     // if this message is replying to another message
     if (message.reference) {
         const refMsgId = message.reference.messageId;
-        console.log("[DEBUG] there's refNote: ", refMsgId);
+        log.info("[DEBUG] there's refNote: ", refMsgId);
         if (refMsgId) {
             const note =
                 discussionMsgIds.get(refMsgId) || curationMsgIds.get(refMsgId);
@@ -326,7 +325,7 @@ export async function handleDiscussionMsg(
     if (addKeyValue(message.id, noteIdStr, "discussionMsgs")) {
         discussionMsgIds.set(message.id, noteIdStr);
     }
-    console.log(
+    log.info(
         "[DEBUG] handleDiscussionMsg done, noteID: " +
             noteId.characterId +
             "-" +

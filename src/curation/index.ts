@@ -11,6 +11,7 @@ import { getRecord } from "../record";
 import { Account } from "../crossbell/types";
 import { getListLinkTypePrefix } from "../utils";
 import { addMember, addRecord, removeRecord } from "./utils";
+import { log } from "../utils/log";
 
 export async function curateRecordInCommunity(
     c: Contract,
@@ -71,7 +72,6 @@ export async function curateRecordInCommunity(
     for (const list of lists) {
         await addRecord(c, communityId, recordId, list);
     }
-    console.log(metadata, lists);
     return data.noteId;
     // const result = await c.note.postForNote(
     //     curator,
@@ -129,10 +129,10 @@ export async function processCuration(
     const { curator, community, lists, reason, raw: rawData } = curation;
     const { contract, admin } = await setup(adminPrivateKey);
     if (!rawData) throw new Error("rawData is not defined");
-    console.log("[DEBUG] Contract has been setup");
+    log.info("[DEBUG] Contract has been setup");
 
     const record = await parseRecord(url);
-    console.log("[DEBUG] url has been parsed");
+    log.info("[DEBUG] url has been parsed");
 
     const communityId = await getCharacter(contract, admin, community, [
         "POST_NOTE_FOR_NOTE",
@@ -141,7 +141,7 @@ export async function processCuration(
         "LINK_NOTE",
         "LINK_CHARACTER",
     ]);
-    console.log(
+    log.info(
         "[DEBUG] Community char has been created, communityId is",
         communityId.toString()
     );
@@ -153,20 +153,20 @@ export async function processCuration(
         "LINK_NOTE",
         "LINK_CHARACTER",
     ]);
-    console.log(
+    log.info(
         "[DEBUG] Curator char has been created, curatorId is",
         curatorId.toString()
     );
 
     const recordId = await getRecord(record, contract, admin, curatorId);
-    console.log(
+    log.info(
         "[DEBUG] Record has been created, record id is",
         recordId.toString()
     );
 
     await addMember(contract, communityId, curatorId);
 
-    console.log("[DEBUG] Community char has followed curator char");
+    log.info("[DEBUG] Community char has followed curator char");
 
     // TODO: admin follows communityId
     // contract.linkCharacter(admin, communityId, "follow")
@@ -181,7 +181,7 @@ export async function processCuration(
         reason,
         rawData
     );
-    console.log("[DEBUG] Curation has been finished");
+    log.info("[DEBUG] Curation has been finished");
     return {
         cid: communityId.toString(),
         rid: recordId.toString(),
