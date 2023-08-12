@@ -244,7 +244,7 @@ export async function handleCurationMsg(
                 curatorId,
                 noteId
             )}
-            ✉️ Attention: all messages in this thread or replies to this curation will be recorded on chain`
+✉️ Attention: all messages in this thread or replies to this curation will be recorded on chain`
         );
     } catch (error) {
         log.error(error); //TODO: reply on discord
