@@ -60,15 +60,8 @@ export function start(
 
     client.on("threadCreate", async (thread: AnyThreadChannel) => {
         if (thread.type == ChannelType.PublicThread) {
-            // When a new forum post is created
-            console.log("threadCreate", thread.parentId); // The forum channel ID
-            console.log("threadCreate", thread.id); // The forum post ID
-            console.log("threadCreate", thread.name); // The name of the forum post
-
-            console.log(thread.parent?.type, ChannelType.GuildForum);
             const messages = await thread.messages.fetch();
             const message = messages.first();
-            console.log(message?.id);
             if (message && maybeCuration(message, cfg.clientId)) {
                 handleCurationMsg(
                     message,
@@ -85,12 +78,6 @@ export function start(
     client.on("messageCreate", async (message: Message) => {
         // get parent id of the channel
         const d = await message.channel.fetch();
-        console.log(
-            "messageCreate",
-            message.channel.type,
-            message.cleanContent
-        );
-        console.log(message.hasThread);
         if (isDiscussion(message, threadIds, curationMsgIds)) {
             handleDiscussionMsg(
                 message,
@@ -106,20 +93,30 @@ export function start(
             });
             const pType = c?.parent?.type;
             if (pType == ChannelType.GuildForum) {
-                // Handled in "threadCreate"
+                if (c?.id === message.id) {
+                    // Handled in "threadCreate"
+                } else {
+                    // Curation is not allowed in threads from GuildText
+                    await message.reply(
+                        `Curation is not allowed in threads. Please post in the channel.
+
+${settings.curatorUsageMsg}`
+                    );
+                }
             } else if (pType == ChannelType.GuildText) {
+                // Curation is not allowed in threads from GuildText
+                await message.reply(
+                    `Curation is not allowed in threads. Please post in the channel.
+
+${settings.curatorUsageMsg}`
+                );
+            } else {
                 handleCurationMsg(
                     message,
                     cfg,
                     processCuration,
                     threadIds,
                     curationMsgIds
-                );
-            } else {
-                await message.reply(
-                    `Curation is not allowed in threads. Please post in the channel.
-
-${settings.curatorUsageMsg}`
                 );
             }
         }
