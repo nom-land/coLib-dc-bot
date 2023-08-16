@@ -64,6 +64,10 @@ export async function curateRecordInCommunity(
         metadata.external_urls = [rawData.external_url];
     }
 
+    if (reason.titleSuggestion) {
+        metadata.title = reason.titleSuggestion;
+    }
+
     const { data } = await c.note.postForCharacter({
         characterId: curator,
         toCharacterId: recordId,

@@ -1,4 +1,4 @@
-import { Guild, Message, User } from "discord.js";
+import { AnyThreadChannel, Guild, Message, User } from "discord.js";
 import { Curation } from "../curation/types";
 import { feedbackUrl, hashOf } from "../utils";
 import { Record } from "../record/types";
@@ -181,7 +181,8 @@ export async function handleCurationMsg(
         noteId: string;
     }>,
     threadIds: Map<string, string>,
-    curationMsgIds: Map<string, string>
+    curationMsgIds: Map<string, string>,
+    thread?: AnyThreadChannel<boolean>
 ) {
     log.info(JSON.stringify(message));
     const data = await parseAsCurationMsg(message);
@@ -191,9 +192,13 @@ export async function handleCurationMsg(
     }
     const { url, rawCuration } = data;
 
-    const thread = await message.startThread({
-        name: message.cleanContent.slice(0, 20) + "...",
-    });
+    if (thread?.name) rawCuration.reason.titleSuggestion = thread.name;
+
+    if (!thread) {
+        thread = await message.startThread({
+            name: message.cleanContent.slice(0, 20) + "...",
+        });
+    }
 
     const hdl = await thread.send(settings.loadingPrompt);
 

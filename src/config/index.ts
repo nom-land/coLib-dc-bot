@@ -39,10 +39,9 @@ export const settings = {
     botConfig,
     loadingPrompt:
         "⛏️ Processing...(I'm a little slow for now - but all my content is stored decentrally using blockchain so it's worth it)",
-    curatorUsageMsg: `
-    {{url}} reason to share... <@${botConfig.clientId}> #tag1 #tag2 #curation-list
+    curatorUsageMsg: `Usage: {{url}} reason to share... <@${botConfig.clientId}> #tag1 #tag2 #curation-list
 
-    Note: tags and curation list are optional.
+Note: tags and curation list are optional.
     `,
     prodAddr: "0x82D071484572125A30e6190F79c2e746c160CDfC" as `0x${string}`,
 };
