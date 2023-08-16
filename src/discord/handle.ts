@@ -192,7 +192,8 @@ export async function handleCurationMsg(
     }
     const { url, rawCuration } = data;
 
-    if (thread?.name) rawCuration.reason.titleSuggestion = thread.name;
+    let hasTitle = !!thread?.name;
+    if (hasTitle) rawCuration.reason.titleSuggestion = thread.name;
 
     if (!thread) {
         thread = await message.startThread({
@@ -213,7 +214,7 @@ export async function handleCurationMsg(
             url,
             cfg.adminPrivateKey
         );
-        if (record.title)
+        if (!hasTitle && record.title)
             thread.edit({
                 name: record.title.slice(0, 100),
             });

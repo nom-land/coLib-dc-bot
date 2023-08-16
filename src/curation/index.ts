@@ -4,7 +4,7 @@ Based on Crossbell, process the curation.
 
 import { settings } from "../config";
 import { parseRecord } from "../record/parser";
-import { Contract, NoteMetadata, Numberish } from "crossbell";
+import { Contract, NoteMetadata } from "crossbell";
 import { Curation, CurationReason, NoteId, RawCuration } from "./types";
 import { getCharacter, getCharacterByAcc, getLinks, setup } from "../crossbell";
 import { getRecord } from "../record";
