@@ -19,6 +19,7 @@ import { loadKeyValuePairs } from "../utils/keyValueStore";
 import commands from "./commands";
 import { BotConfig, settings } from "../config";
 import { log } from "../utils/log";
+import { backOff } from "exponential-backoff";
 const threadIds = new Map<string, string>();
 const discussionMsgIds = new Map<string, string>();
 const curationMsgIds = new Map<string, string>();
@@ -61,7 +62,15 @@ export function start(
     client.on("threadCreate", async (thread: AnyThreadChannel) => {
         log.info(`Thread created: ${thread.name}. Thread type: ${thread.type}`);
         if (thread.type == ChannelType.PublicThread) {
-            const message = await thread.messages.fetch(thread.id);
+            const message = await backOff(
+                () => thread.messages.fetch(thread.id),
+                {
+                    retry: (e) => {
+                        log.error(`Error fetching thread message: ${e}`);
+                        return true;
+                    },
+                }
+            );
             log.info(`Curation message found in thread: ${message?.content}`);
             if (message && maybeCuration(message, cfg.clientId)) {
                 handleCurationMsg(
