@@ -61,10 +61,8 @@ export function start(
     client.on("threadCreate", async (thread: AnyThreadChannel) => {
         log.info(`Thread created: ${thread.name}. Thread type: ${thread.type}`);
         if (thread.type == ChannelType.PublicThread) {
-            const messages = await thread.messages.fetch();
-            const message = messages.first();
+            const message = await thread.messages.fetch(thread.id);
             log.info(`Curation message found in thread: ${message?.content}`);
-
             if (message && maybeCuration(message, cfg.clientId)) {
                 handleCurationMsg(
                     message,

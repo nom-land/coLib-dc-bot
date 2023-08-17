@@ -193,7 +193,7 @@ export async function handleCurationMsg(
     const { url, rawCuration } = data;
 
     let hasTitle = !!thread?.name;
-    if (hasTitle) rawCuration.reason.titleSuggestion = thread.name;
+    if (hasTitle) rawCuration.reason.titleSuggestion = thread!.name;
 
     if (!thread) {
         thread = await message.startThread({
