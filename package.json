@@ -28,7 +28,7 @@
     "@extractus/article-extractor": "^7.3.1",
     "@types/require-all": "^3.0.3",
     "bunyan": "^1.8.15",
-    "crossbell": "^1.5.9",
+    "crossbell": "^1.6.1",
     "discord.js": "^14.11.0",
     "dotenv": "^16.0.3",
     "ethers": "^6.4.0",
