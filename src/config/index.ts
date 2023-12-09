@@ -6,6 +6,8 @@ if (process.env.PROD === "true") {
     envPath = ".env";
 }
 
+console.log(`Using ${envPath} for config`);
+
 config({
     path: envPath,
 });
@@ -34,12 +36,10 @@ const botConfig = {
 
 export const settings = {
     appName: "nunti", //will be used in the "sources" of metadata
-    curationCategoryName: "colib lists", //will be used in the new created category in discord server
-    defaultCurationList: "general", //will be used in the new created linklist in the community
     botConfig,
     loadingPrompt:
         "⛏️ Processing...(I'm a little slow for now - but all my content is stored decentrally using blockchain so it's worth it)",
-    curatorUsageMsg: `Usage: {{url}} reason to share... <@${botConfig.clientId}> #tag1 #tag2 #curation-list
+    curatorUsageMsg: `Usage: {{url}} reason to share... <@${botConfig.clientId}> #tag1 #tag2
 
 Note: tags and curation list are optional.
     `,

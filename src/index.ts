@@ -1,5 +1,4 @@
 import { crossbell } from "crossbell/network";
-import { processCuration } from "./curation";
 import { start } from "./discord";
 import fetch from "isomorphic-fetch"; // 或者 'cross-fetch'
 import { settings } from "./config";
@@ -30,7 +29,7 @@ function main() {
     }
 
     //TODO: setup app character
-    start(settings.botConfig, processCuration);
+    start(settings.botConfig);
 }
 
 main();

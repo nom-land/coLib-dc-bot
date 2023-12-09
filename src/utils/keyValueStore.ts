@@ -1,5 +1,4 @@
 // keyValueStore.ts
-import { table } from "console";
 import * as fs from "fs";
 import * as path from "path";
 

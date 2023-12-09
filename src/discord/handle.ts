@@ -1,15 +1,12 @@
 import { AnyThreadChannel, Guild, Message, User } from "discord.js";
-import { Curation } from "../curation/types";
 import { feedbackUrl, hashOf } from "../utils";
-import { Record } from "../record/types";
 import { addKeyValue } from "../utils/keyValueStore";
-import { BotConfig, settings } from "../config";
-import { getCommunityLists, processDiscussion } from "../curation";
-import { Account } from "../crossbell/types";
+import { settings } from "../config";
 import { NoteMetadata } from "crossbell";
 import { mentionsBot } from "./utils";
 import { GuildChannelManager } from "discord.js";
 import { log } from "../utils/log";
+import Nomland, { Account, Curation } from "nomland.js";
 
 export function maybeCuration(message: Message, clientId: string) {
     return !message.author.bot && mentionsBot(message, clientId);
@@ -133,31 +130,13 @@ export async function parseAsCurationMsg(message: Message) {
         contentAfterBot
     );
 
-    // Elements existed in the community's curation lists are lists, otherwise are tags
-    const existedCurationLists = (await getCommunityLists(data.community))
-        .listNames;
-
-    const tagSuggestions = [] as string[];
-    const listSuggestions = [];
-    tagsOrList?.forEach((tagOrList) => {
-        if (existedCurationLists.includes(tagOrList.slice(1))) {
-            listSuggestions.push(tagOrList.slice(1));
-        } else {
-            tagSuggestions.push(tagOrList.slice(1));
-        }
-    });
-    if (listSuggestions.length === 0) {
-        listSuggestions.push(settings.defaultCurationList);
-    }
-
     return {
         rawCuration: {
             raw: data.message,
             curator: data.poster,
-            lists: listSuggestions,
             reason: {
                 comment: cleanedContent,
-                tagSuggestions,
+                tagSuggestions: tagsOrList,
             },
             community: data.community,
         } as Curation,
@@ -168,23 +147,10 @@ export async function parseAsCurationMsg(message: Message) {
 /* handle the message as a curation */
 export async function handleCurationMsg(
     message: Message,
-    cfg: BotConfig,
-    processCuration: (
-        c: Curation,
-        url: string,
-        adminPrivateKey: `0x${string}`
-    ) => Promise<{
-        rid: string;
-        cid: string;
-        record: Record;
-        curatorId: string;
-        noteId: string;
-    }>,
     threadIds: Map<string, string>,
     curationMsgIds: Map<string, string>,
     thread?: AnyThreadChannel<boolean>
 ) {
-    log.info(JSON.stringify(message));
     const data = await parseAsCurationMsg(message);
     if (!data) {
         await message.reply(settings.curatorUsageMsg);
@@ -209,11 +175,16 @@ export async function handleCurationMsg(
         return;
     }
     try {
-        const { cid, rid, record, curatorId, noteId } = await processCuration(
-            rawCuration,
-            url,
-            cfg.adminPrivateKey
+        const nomland = new Nomland(
+            settings.appName,
+            settings.botConfig.adminPrivateKey
         );
+
+        log.info(rawCuration, url);
+
+        const { cid, rid, record, curatorId, noteId } =
+            await nomland.processCuration(rawCuration, url, "elephant");
+
         if (!hasTitle && record.title)
             thread.edit({
                 name: record.title.slice(0, 100),
@@ -294,7 +265,7 @@ export async function handleDiscussionMsg(
     if (!data) {
         return;
     }
-    let noteIdOrRecordId = null;
+    let noteIds = null;
 
     // if this message is replying to another message
     if (message.reference) {
@@ -303,38 +274,41 @@ export async function handleDiscussionMsg(
         if (refMsgId) {
             const note =
                 discussionMsgIds.get(refMsgId) || curationMsgIds.get(refMsgId);
-            if (note) noteIdOrRecordId = note;
+            if (note) noteIds = note;
         }
     } else {
         const discussingRecordId = getDiscussingCuration(
             message,
             curationMsgIds
         );
-        if (discussingRecordId) noteIdOrRecordId = discussingRecordId;
+        if (discussingRecordId) noteIds = discussingRecordId;
     }
 
-    if (!noteIdOrRecordId) {
+    if (!noteIds) {
         return;
     }
 
-    const noteId = await processDiscussion(
+    const nomland = new Nomland(
+        settings.appName,
+        settings.botConfig.adminPrivateKey
+    );
+
+    const { characterId, noteId } = await nomland.processDiscussion(
         data.poster,
         data.community,
         data.message,
-        "note",
-        noteIdOrRecordId,
-        adminPrivateKey
+        noteIds
     );
 
-    const noteIdStr =
-        noteId.characterId.toString() + "-" + noteId.noteId.toString();
+    const noteIdStr = characterId + "-" + noteId;
     if (addKeyValue(message.id, noteIdStr, "discussionMsgs")) {
         discussionMsgIds.set(message.id, noteIdStr);
     }
+
     log.info(
         "[DEBUG] handleDiscussionMsg done, noteID: " +
-            noteId.characterId +
+            characterId +
             "-" +
-            noteId.noteId
+            noteId
     );
 }
