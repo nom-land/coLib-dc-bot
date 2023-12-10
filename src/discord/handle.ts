@@ -180,8 +180,6 @@ export async function handleCurationMsg(
             settings.botConfig.adminPrivateKey
         );
 
-        log.info(rawCuration, url);
-
         const { cid, rid, record, curatorId, noteId } =
             await nomland.processCuration(rawCuration, url, "elephant");
 
