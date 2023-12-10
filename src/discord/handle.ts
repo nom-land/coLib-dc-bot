@@ -66,7 +66,7 @@ async function extractTagsOrLists(
             // mentionId is <#xxxx>, slice only the id
             mentionId = mentionId.slice(2, -1);
             const channel = await channels.fetch(mentionId);
-            if (channel?.name) tagsOrList.push(`#${channel.name}`);
+            if (channel?.name) tagsOrList.push(`${channel.name}`);
         }
     }
 
