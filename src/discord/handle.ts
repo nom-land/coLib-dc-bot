@@ -77,7 +77,7 @@ async function extractTagsOrLists(
     const tagsOrListPattern = /#[^\s]+/g;
     const tags = cleanContent.match(tagsOrListPattern);
 
-    tags?.map((tag) => tagsOrList.push(tag));
+    tags?.map((tag) => tagsOrList.push(tag.slice(1)));
     return tagsOrList;
 }
 
