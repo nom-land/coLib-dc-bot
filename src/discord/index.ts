@@ -46,16 +46,18 @@ export function start(cfg: BotConfig) {
 
     client.on("threadCreate", async (thread: AnyThreadChannel) => {
         log.info(`Thread created: ${thread.name}. Thread type: ${thread.type}`);
+
         if (thread.type == ChannelType.PublicThread) {
-            const message = await backOff(
-                () => thread.messages.fetch(thread.id),
-                {
-                    retry: (e) => {
-                        log.error(`Error fetching thread message: ${e}`);
-                        return true;
-                    },
-                }
-            );
+            const message = await thread.fetchStarterMessage();
+            // const message = await backOff(
+            //     () => thread.messages.fetch(thread.id),
+            //     {
+            //         retry: (e) => {
+            //             log.error(`Error fetching thread message: ${e}`);
+            //             return true;
+            //         },
+            //     }
+            // );
             log.info(`Curation message found in thread: ${message?.content}`);
             if (message && maybeCuration(message, cfg.clientId)) {
                 handleCurationMsg(message, threadIds, curationMsgIds, thread);
