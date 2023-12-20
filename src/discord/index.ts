@@ -47,6 +47,11 @@ export function start(cfg: BotConfig) {
     client.on("threadCreate", async (thread: AnyThreadChannel) => {
         log.info(`Thread created: ${thread.name}. Thread type: ${thread.type}`);
 
+        // Only handle forum threads
+        const pType = thread.parent?.type;
+        if (pType != ChannelType.GuildForum) {
+            return;
+        }
         if (thread.type == ChannelType.PublicThread) {
             const message = await thread.fetchStarterMessage();
             // const message = await backOff(
@@ -67,7 +72,6 @@ export function start(cfg: BotConfig) {
 
     client.on("messageCreate", async (message: Message) => {
         // get parent id of the channel
-        const d = await message.channel.fetch();
         if (isDiscussion(message, threadIds, curationMsgIds)) {
             handleDiscussionMsg(
                 message,
