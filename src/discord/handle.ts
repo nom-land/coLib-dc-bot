@@ -134,11 +134,9 @@ export async function parseAsCurationMsg(message: Message) {
         author: data.poster,
         context: data.community,
         noteDetails: {
-            raw: data.message, // TODO: CHANGE IT
-            reason: {
-                content: cleanedContent,
-                tags: tagsOrList,
-            },
+            rawContent: data.message.content,
+            content: cleanedContent,
+            tags: tagsOrList,
         } as NoteDetails,
         url,
     };
