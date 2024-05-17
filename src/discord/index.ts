@@ -17,7 +17,6 @@ import { loadKeyValuePairs } from "../utils/keyValueStore";
 import commands from "./commands";
 import { BotConfig, settings } from "../config";
 import { log } from "../utils/log";
-import { backOff } from "exponential-backoff";
 const threadIds = new Map<string, string>();
 const discussionMsgIds = new Map<string, string>();
 const curationMsgIds = new Map<string, string>();
@@ -73,12 +72,7 @@ export function start(cfg: BotConfig) {
     client.on("messageCreate", async (message: Message) => {
         // get parent id of the channel
         if (isDiscussion(message, threadIds, curationMsgIds)) {
-            handleDiscussionMsg(
-                message,
-                cfg.adminPrivateKey,
-                discussionMsgIds,
-                curationMsgIds
-            );
+            handleDiscussionMsg(message, discussionMsgIds, curationMsgIds);
         } else if (maybeCuration(message, cfg.clientId)) {
             const c = message.guild?.channels.cache.find((channel) => {
                 if (channel.id == message.channel.id) {

@@ -6,7 +6,7 @@ import { NoteMetadata } from "crossbell";
 import { mentionsBot } from "./utils";
 import { GuildChannelManager } from "discord.js";
 import { log } from "../utils/log";
-import Nomland, { Account, Curation } from "nomland.js";
+import Nomland, { Account, NoteDetails, NoteKey } from "nomland.js";
 
 export function maybeCuration(message: Message, clientId: string) {
     return !message.author.bot && mentionsBot(message, clientId);
@@ -131,15 +131,15 @@ export async function parseAsCurationMsg(message: Message) {
     );
 
     return {
-        rawCuration: {
-            raw: data.message,
-            curator: data.poster,
+        author: data.poster,
+        context: data.community,
+        noteDetails: {
+            raw: data.message, // TODO: CHANGE IT
             reason: {
-                comment: cleanedContent,
-                tagSuggestions: tagsOrList,
+                content: cleanedContent,
+                tags: tagsOrList,
             },
-            community: data.community,
-        } as Curation,
+        } as NoteDetails,
         url,
     };
 }
@@ -156,10 +156,10 @@ export async function handleCurationMsg(
         await message.reply(settings.curatorUsageMsg);
         return;
     }
-    const { url, rawCuration } = data;
+    const { url, author, context, noteDetails } = data;
 
     let hasTitle = !!thread?.name;
-    if (hasTitle) rawCuration.reason.titleSuggestion = thread!.name;
+    if (hasTitle) noteDetails.title = thread!.name;
 
     if (!thread) {
         thread = await message.startThread({
@@ -169,7 +169,7 @@ export async function handleCurationMsg(
 
     const hdl = await thread.send(settings.loadingPrompt);
 
-    if (!rawCuration) {
+    if (!noteDetails) {
         log.error("parsed error"); //TODO: reply on discord
         hdl.reply("curation is not successfully parsed");
         return;
@@ -180,44 +180,58 @@ export async function handleCurationMsg(
             settings.botConfig.adminPrivateKey
         );
 
-        const { cid, rid, record, curatorId, noteId } =
-            await nomland.processCuration(rawCuration, url, "elephant");
+        // const { cid, rid, record, curatorId, noteId } =
+        // await nomland.createShare(rawCuration, url, "elephant");
+        const { entity, noteKey } = await nomland.createShare({
+            author,
+            context,
+            details: noteDetails,
+            entityUrl: url,
+            parser: "elephant",
+        });
 
-        if (!hasTitle && record.title)
+        if (!hasTitle && entity.metadata.title)
             thread.edit({
-                name: record.title.slice(0, 100),
+                name: entity.metadata.title.slice(0, 100),
             });
 
-        if (addKeyValue(thread.id, rid, "threads")) {
-            threadIds.set(thread.id, rid);
+        if (addKeyValue(thread.id, entity.id, "threads")) {
+            threadIds.set(thread.id, entity.id);
         } else {
             log.error(
                 "addKeyValue failed. thread id: " +
                     thread.id +
                     " record id: " +
-                    rid
+                    entity.id
             );
         }
 
-        if (addKeyValue(message.id, curatorId + "-" + noteId, "curationMsgs")) {
-            curationMsgIds.set(message.id, curatorId + "-" + noteId);
+        if (
+            addKeyValue(
+                message.id,
+                noteKey.characterId + "-" + noteKey.noteId,
+                "curationMsgs"
+            )
+        ) {
+            curationMsgIds.set(
+                message.id,
+                noteKey.characterId + "-" + noteKey.noteId
+            );
         } else {
             log.error(
                 "addKeyValue failed. message id: " +
                     message.id +
                     " curator id: " +
-                    curatorId +
+                    noteKey.characterId +
                     " note id: " +
-                    noteId
+                    noteKey.noteId
             );
         }
 
         hdl.edit(
             `🎉 Curation is successfully processed. See: ${feedbackUrl(
-                cid,
-                rid,
-                curatorId,
-                noteId
+                noteKey.characterId,
+                noteKey.noteId
             )}
 ✉️ Attention: all messages in this thread or replies to this curation will be recorded on chain`
         );
@@ -255,7 +269,6 @@ export function getDiscussingCuration(
 // Post the message on Crossbell
 export async function handleDiscussionMsg(
     message: Message,
-    adminPrivateKey: `0x${string}`,
     discussionMsgIds: Map<string, string>,
     curationMsgIds: Map<string, string>
 ) {
@@ -263,7 +276,7 @@ export async function handleDiscussionMsg(
     if (!data) {
         return;
     }
-    let noteIds = null;
+    let replyToId: NoteKey | null = null;
 
     // if this message is replying to another message
     if (message.reference) {
@@ -272,17 +285,23 @@ export async function handleDiscussionMsg(
         if (refMsgId) {
             const note =
                 discussionMsgIds.get(refMsgId) || curationMsgIds.get(refMsgId);
-            if (note) noteIds = note;
+            if (note) {
+                const [characterId, noteId] = note.split("-");
+                replyToId = { characterId, noteId };
+            }
         }
     } else {
         const discussingRecordId = getDiscussingCuration(
             message,
             curationMsgIds
         );
-        if (discussingRecordId) noteIds = discussingRecordId;
+        if (discussingRecordId) {
+            const [characterId, noteId] = discussingRecordId.split("-");
+            replyToId = { characterId, noteId };
+        }
     }
 
-    if (!noteIds) {
+    if (!replyToId) {
         return;
     }
 
@@ -291,11 +310,11 @@ export async function handleDiscussionMsg(
         settings.botConfig.adminPrivateKey
     );
 
-    const { characterId, noteId } = await nomland.processDiscussion(
+    const { characterId, noteId } = await nomland.createReply(
         data.poster,
         data.community,
         data.message,
-        noteIds
+        replyToId
     );
 
     const noteIdStr = characterId + "-" + noteId;

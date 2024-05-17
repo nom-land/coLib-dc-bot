@@ -9,12 +9,7 @@ export function hashOf(content: string, digits = 4, suffix = true): string {
     else return hash.slice(0, digits);
 }
 
-export function feedbackUrl(
-    cid: string,
-    rid: string,
-    curatorId: string,
-    noteId: string
-) {
+export function feedbackUrl(curatorId: string, noteId: string) {
     if (settings.botConfig.prod === false) {
         // return `https://colib-home.vercel.app/community/${cid}/record/${rid}`;
         return `https://colib-home.vercel.app/curation/${curatorId}-${noteId}`;

@@ -36,7 +36,7 @@
     "isomorphic-fetch": "^3.0.0",
     "md5": "^2.3.0",
     "node-fetch": "^3.3.1",
-    "nomland.js": "0.2.12",
+    "nomland.js": "0.5.13",
     "punycode": "^2.3.0",
     "readline-promise": "^1.0.5",
     "require-all": "^3.0.0"
